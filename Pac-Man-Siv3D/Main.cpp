@@ -58,26 +58,36 @@ void draw_coins(){
 				// large
 				coin = TextureAsset(U"large_coin");
 			}else continue;
-			coin.draw(j*SIZE + 60, i*SIZE + 60);
+			coin.draw(j*SIZE + 58, i*SIZE + 60);
 		}
 	}
+}
+
+void draw_header(const double current_time){
+	static const Font font(25, Typeface::Medium);
+	const String mode = Python::get_current_mode() ? U"Chase" : U"Scatter";
+	font(U"{:.1f}"_fmt(current_time)).drawAt(120, 40);
+	font(mode).drawAt(290, 40);
+	font(U"{}"_fmt(Python::get_current_score())).drawAt(450, 40);
 }
 
 void draw_images(const int flip){
 	static int last_pac_posx = Python::get_posx(0);
 	static int last_pac_posy = Python::get_posy(0);
 
-	TextureAsset(U"board").drawAt(Scene::Center());
+	TextureAsset(U"board").drawAt(Scene::Center() + Point(-2,0));
 	draw_coins();
+	draw_header(current_time);
 
 	for(const int i : step((int)objects.size())){
 		const int s = Python::get_state(i);
 		const int x = Python::get_posx(i);
 		const int y = Python::get_posy(i);
 		const int r = Python::get_rot(i);
+		const Point pos(x*SIZE/size + 58, y*SIZE/size + 60);
 		if(i == 0){
 			if(last_pac_posx == x && last_pac_posy == y){
-				TextureAsset(U"{}{}{}{}"_fmt(s,i,r,0)).draw(x*SIZE/size + 60, y*SIZE/size + 60);
+				TextureAsset(U"{}{}{}{}"_fmt(s,i,r,0)).draw(pos);
 				continue;
 			}
 			last_pac_posx = x;
@@ -88,19 +98,19 @@ void draw_images(const int flip){
 				// eaten
 				if((x+size/2)/size == (last_pac_posx+size/2)/size && (y+size/2)/size == (last_pac_posy+size/2)/size){
 					assert(Python::get_eat_num());
-					TextureAsset(U"{}{}{}{}"_fmt(SCORE,i,Python::get_eat_num()-1,flip)).draw(x*SIZE/size + 60, y*SIZE/size + 60);
+					TextureAsset(U"{}{}{}{}"_fmt(SCORE,i,Python::get_eat_num()-1,flip)).draw(pos);
 					continue;
 				}
 			}
-			TextureAsset(U"{}{}{}{}"_fmt(s,i,r,0)).draw(x*SIZE/size + 60, y*SIZE/size + 60);
+			TextureAsset(U"{}{}{}{}"_fmt(s,i,r,0)).draw(pos);
 			continue;
 		}
 		const int t = Python::get_limit_time(i) * 4;
 		if(t <= 8 && !(t & 1)){
 			// frightened mode
-			TextureAsset(U"{}{}{}{}"_fmt(FLASH,i,r,flip)).draw(x*SIZE/size + 60, y*SIZE/size + 60);
+			TextureAsset(U"{}{}{}{}"_fmt(FLASH,i,r,flip)).draw(pos);
 		}else{
-			TextureAsset(U"{}{}{}{}"_fmt(s,i,r,flip)).draw(x*SIZE/size + 60, y*SIZE/size + 60);
+			TextureAsset(U"{}{}{}{}"_fmt(s,i,r,flip)).draw(pos);
 		}
 	}
 }
@@ -121,7 +131,9 @@ void update_game(){
 }
 
 struct TitleScene : App::Scene {
-	TitleScene(const InitData &init) : IScene(init), font(30, Typeface::Medium), title_font(50, Typeface::Medium){}
+	TitleScene(const InitData &init) : IScene(init), font(30, Typeface::Medium), title_font(50, Typeface::Medium){
+		Python::reset_game();
+	}
 	void update() override{
 		if(KeyEnter.down()){
 			changeScene(U"Game", 0s);
@@ -139,15 +151,24 @@ private:
 struct PauseScene : App::Scene {
 	PauseScene(const InitData &init) : IScene(init), font(45, Typeface::Bold){}
 	void update() override{
-		if(KeyEscape.down()){
+		if((KeyEscape | KeyEnter).down()){
 			Python::start_game();
 			changeScene(U"Game", 0s);
+		}
+		if(SimpleGUI::ButtonAt(U"Continue (Esc)", Scene::Center() + Point(0,50), 200)){
+			Python::start_game();
+			changeScene(U"Game", 0.2s);
+		}
+		if(SimpleGUI::ButtonAt(U"Back To Title", Scene::Center() + Point(0,100), 200)){
+			changeScene(U"Title", 0s);
 		}
 	}
 	void draw() const override{
 		draw_images(0);
 		Rect(Point(0,0), Scene::Size()).draw(Transparency(0.8));
 		font(U"Pause").drawAt(Scene::Center());
+		SimpleGUI::ButtonAt(U"Continue (Esc)", Scene::Center() + Point(0,50), 200);
+		SimpleGUI::ButtonAt(U"Back To Title", Scene::Center() + Point(0,100), 200);
 	}
 private:
 	const Font font;
@@ -160,12 +181,16 @@ struct GameScene : App::Scene {
 			Python::stop_game();
 			changeScene(U"Pause", 0s);
 		}
+		if(Python::get_is_game_over() || Python::get_is_game_cleared()){
+			Python::stop_game();
+			changeScene(U"Finish", 0.2s);
+		}
 	}
 	void draw() const override{
 		// Ready
 		if(!Python::get_is_game_started()){
 			draw_images(0);
-			font(U"READY").drawAt(Scene::Center() + Point(4,43));
+			font(U"READY").drawAt(Scene::Center() + Point(2,43));
 			for(const int i : { 1,3 }){
 				if(arrows[i].down()){
 					last_pressed_key = i;
@@ -176,9 +201,11 @@ struct GameScene : App::Scene {
 		}
 		for(int i = 0; i < 4; i++){
 			if(arrows[i].down()){
-				last_pressed_key = i;				}
+				last_pressed_key = i;
+			}
 		}
 		update_game();
+
 		// background
 		Rect{ 0,0, 62,640 }.draw(Palette::Black);
 		Rect{ 545,0, 600,640 }.draw(Palette::Black);
@@ -190,6 +217,30 @@ private:
 	};
 };
 
+struct FinishScene : App::Scene {
+	FinishScene(const InitData &init) : IScene(init), font(30, Typeface::Medium){}
+	void update() override{
+		if(KeyEnter.down()){
+			changeScene(U"Title", 0s);
+		}
+		if(SimpleGUI::ButtonAt(U"BackToTitle", Scene::Center() + Point(0,100))){
+			changeScene(U"Title", 0s);
+		}
+	}
+	void draw() const override{
+		if(Python::get_is_game_cleared()){
+			// game clear
+			font(U"Game Cleared!!").drawAt(Scene::Center());
+		}else{
+			// game over
+			font(U"Game Over").drawAt(Scene::Center());
+		}
+		font(U"Time: {:.1f}"_fmt(current_time)).drawAt(Scene::Center() + Point(0,-100));
+		SimpleGUI::ButtonAt(U"BackToTitle", Scene::Center() + Point(0,100));
+	}
+private:
+	const Font font;
+};
 
 void Main(){
 	Scene::SetBackground(Palette::Black);
@@ -201,6 +252,7 @@ void Main(){
 	manager.add<TitleScene>(U"Title");
 	manager.add<GameScene>(U"Game");
 	manager.add<PauseScene>(U"Pause");
+	manager.add<FinishScene>(U"Finish");
 	manager.changeScene(U"Title", 0.2s);
 
 	// Init
@@ -209,13 +261,6 @@ void Main(){
 	while(System::Update()){
 		if(!manager.update()){
 			break;
-		}
-		if(KeyQ.down()){
-			break;
-		}
-		continue;
-
-		if(SimpleGUI::Button(U"Button", Vec2{ 640, 40 })){
 		}
 	}
 }
