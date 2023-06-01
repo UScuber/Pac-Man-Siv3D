@@ -16,6 +16,7 @@ enum {
 
 const Array<String> objects = { U"pacman", U"red", U"blue", U"pink", U"orange" };
 const Array<String> direction_name = { U"up", U"left", U"down", U"right" };
+const String img_path = U"example/images/";
 
 int last_pressed_key = 3;
 
@@ -25,26 +26,34 @@ void read_all_images(){
 	for(int i = 0; i < (int)objects.size(); i++){
 		for(int j = 0; j < (int)direction_name.size(); j++){
 			for(int k = 0; k < 2; k++){
-				String img_name = U"images/{}/{}{}.png"_fmt(objects[i], direction_name[j], k);
+				String img_name = img_path + U"{}/{}{}.png"_fmt(objects[i], direction_name[j], k);
 				TextureAsset::Register(U"{}{}{}{}"_fmt(NORMAL,i,j,k), img_name);
 
-				img_name = U"images/eaten/{}.png"_fmt(direction_name[j]);
+				img_name = img_path + U"eaten/{}.png"_fmt(direction_name[j]);
 				TextureAsset::Register(U"{}{}{}{}"_fmt(EATEN,i,j,k), img_name);
 
-				img_name = U"images/frightened/0{}.png"_fmt(k);
+				img_name = img_path + U"frightened/0{}.png"_fmt(k);
 				TextureAsset::Register(U"{}{}{}{}"_fmt(FRIGHTENED,i,j,k), img_name);
 
-				img_name = U"images/eaten/{}00.png"_fmt(1 << (j + 1));
+				img_name = img_path + U"eaten/{}00.png"_fmt(1 << (j + 1));
 				TextureAsset::Register(U"{}{}{}{}"_fmt(SCORE,i,j,k), img_name);
 
-				img_name = U"images/frightened/1{}.png"_fmt(k);
+				img_name = img_path + U"frightened/1{}.png"_fmt(k);
 				TextureAsset::Register(U"{}{}{}{}"_fmt(FLASH,i,j,k), img_name);
 			}
 		}
 	}
-	TextureAsset::Register(U"small_coin", U"images/items/small.png");
-	TextureAsset::Register(U"large_coin", U"images/items/big.png");
-	TextureAsset::Register(U"board", U"images/stage.png");
+	TextureAsset::Register(U"small_coin", img_path + U"items/small.png");
+	TextureAsset::Register(U"large_coin", img_path + U"items/big.png");
+	TextureAsset::Register(U"board", img_path + U"stage.png");
+}
+
+
+Texture get_texture_asset(const String &asset_name){
+	return TextureAsset(asset_name);
+}
+Texture get_texture_asset(const int a, const int b, const int c, const int d){
+	return TextureAsset(U"{}{}{}{}"_fmt(a, b, c, d));
 }
 
 
@@ -55,11 +64,11 @@ void draw_coins(){
 			const Point pos(j*SIZE + adj_x, i*SIZE + adj_y);
 			// small
 			if(type == 7){
-				TextureAsset(U"small_coin").draw(pos);
+				get_texture_asset(U"small_coin").draw(pos);
 			}
 			// large
 			if(type == 8){
-				TextureAsset(U"large_coin").draw(pos);
+				get_texture_asset(U"large_coin").draw(pos);
 			}
 		}
 	}
@@ -75,7 +84,7 @@ void draw_header(const double current_time){
 
 void draw_residue(){
 	for(int i = 0; i < Python::get_remain_num(); i++){
-		TextureAsset(U"0030").drawAt(Scene::Center().movedBy(-220 + i*30, 300));
+		get_texture_asset(0,0,3,0).drawAt(Scene::Center().movedBy(-220 + i*30, 300));
 	}
 }
 
@@ -84,7 +93,7 @@ void draw_images(const int flip){
 	static int last_pac_posy = Python::get_posy(0);
 
 	// stage
-	TextureAsset(U"board").drawAt(Scene::Center().movedBy(-2, 0));
+	get_texture_asset(U"board").drawAt(Scene::Center().movedBy(-2, 0));
 	// cookies
 	draw_coins();
 	// time,mode,score
@@ -100,7 +109,7 @@ void draw_images(const int flip){
 		const Point pos(x*SIZE/size + adj_x, y*SIZE/size + adj_y);
 		if(i == 0){
 			if(last_pac_posx == x && last_pac_posy == y){
-				TextureAsset(U"{}{}{}{}"_fmt(s,i,r,0)).draw(pos);
+				get_texture_asset(s,i,r,0).draw(pos);
 				continue;
 			}
 			last_pac_posx = x;
@@ -111,19 +120,19 @@ void draw_images(const int flip){
 				// eaten
 				if((x+size/2)/size == (last_pac_posx+size/2)/size && (y+size/2)/size == (last_pac_posy+size/2)/size){
 					assert(Python::get_eat_num());
-					TextureAsset(U"{}{}{}{}"_fmt(SCORE,i,Python::get_eat_num()-1,flip)).draw(pos);
+					get_texture_asset(SCORE,i,Python::get_eat_num()-1,flip).draw(pos);
 					continue;
 				}
 			}
-			TextureAsset(U"{}{}{}{}"_fmt(s,i,r,0)).draw(pos);
+			get_texture_asset(s,i,r,0).draw(pos);
 			continue;
 		}
 		const int t = Python::get_limit_time(i) * 4;
 		if(t <= 8 && !(t & 1)){
 			// frightened mode
-			TextureAsset(U"{}{}{}{}"_fmt(FLASH,i,r,flip)).draw(pos);
+			get_texture_asset(FLASH,i,r,flip).draw(pos);
 		}else{
-			TextureAsset(U"{}{}{}{}"_fmt(s,i,r,flip)).draw(pos);
+			get_texture_asset(s,i,r,flip).draw(pos);
 		}
 	}
 }
@@ -194,17 +203,20 @@ struct GameScene : App::Scene {
 			Python::stop_game();
 			sw.pause();
 			changeScene(U"Pause", 0s);
+			return;
 		}
 		if(Python::get_is_game_cleared() || (Python::get_remain_num() == 0 && Python::get_is_game_over())){
 			Python::stop_game();
 			sw.pause();
 			changeScene(U"Finish", 0.2s);
+			return;
 		}
 		if(Python::get_is_game_over()){
 			Python::stop_game();
 			Python::restart_game();
 			sw.reset();
 			changeScene(U"Game", 0.5s);
+			return;
 		}
 	}
 	void draw() const override{
@@ -234,7 +246,7 @@ struct GameScene : App::Scene {
 	}
 private:
 	const Font font = Font(30, Typeface::Medium);
-	static constexpr decltype(KeyUp) arrows[4] = {
+	static constexpr Input arrows[4] = {
 		KeyUp, KeyLeft, KeyDown, KeyRight
 	};
 };
