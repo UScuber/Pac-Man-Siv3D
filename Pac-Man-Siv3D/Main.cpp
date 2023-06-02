@@ -142,14 +142,35 @@ void update_game(){
 	if(cnt % flip_freq == 0) flip ^= 1;
 	cnt++;
 	const double current_time = sw.sF();
-	const int res = Python::update_frame(current_time, last_pressed_key);
+	Python::update_frame(current_time, last_pressed_key);
 
 	draw_images(flip);
-
-	if(Python::get_is_game_over()){
-		Print << U"Game Over!!!";
-	}
 }
+
+
+struct Button {
+	Button(const Point &center_pos, const int w=200, const int h=36) :
+		buttonRect(Rect(Arg::center = center_pos, w, h).rounded(4.8)){}
+
+	bool clicked() const{
+		return buttonRect.leftClicked();
+	}
+
+	void draw(const String &str) const{
+		buttonRect.draw(buttonRect.mouseOver() ? mouseOverColor : backgroundColor);
+		buttonRect.drawFrame(1, 0, frameColor);
+		font(str).drawAt(buttonRect.center(), fontColor);
+	}
+private:
+	const RoundRect buttonRect;
+	const Font font = Font(20, Typeface::Medium);
+	static constexpr ColorF mouseOverColor{ 0.9, 0.95, 1.0 };
+	static constexpr ColorF backgroundColor{ 1.0 };
+	static constexpr ColorF frameColor{ 0.67 };
+	static constexpr ColorF fontColor{ 0.25 };
+};
+
+
 
 struct TitleScene : App::Scene {
 	TitleScene(const InitData &init) : IScene(init){
@@ -170,6 +191,7 @@ private:
 	const Font title_font = Font(50, Typeface::Medium);
 };
 
+
 struct PauseScene : App::Scene {
 	PauseScene(const InitData &init) : IScene(init){}
 	void update() override{
@@ -177,11 +199,11 @@ struct PauseScene : App::Scene {
 			Python::start_game();
 			changeScene(U"Game", 0s);
 		}
-		if(SimpleGUI::ButtonAt(U"Continue (Esc)", Scene::Center().movedBy(0, 50), 200)){
+		if(continueButton.clicked()){
 			Python::start_game();
 			changeScene(U"Game", 0.2s);
 		}
-		if(SimpleGUI::ButtonAt(U"Back To Title", Scene::Center().movedBy(0, 100), 200)){
+		if(backToButton.clicked()){
 			changeScene(U"Title", 0s);
 		}
 	}
@@ -189,12 +211,16 @@ struct PauseScene : App::Scene {
 		draw_images(0);
 		Rect(Point(0,0), Scene::Size()).draw(Transparency(0.8));
 		font(U"Pause").drawAt(Scene::Center());
-		SimpleGUI::ButtonAt(U"Continue (Esc)", Scene::Center().movedBy(0, 50), 200);
-		SimpleGUI::ButtonAt(U"Back To Title", Scene::Center().movedBy(0, 100), 200);
+
+		backToButton.draw(U"BackToTitle");
+		continueButton.draw(U"Continue(Esc)");
 	}
 private:
 	const Font font = Font(45, Typeface::Bold);
+	const Button continueButton = Button(Scene::Center().movedBy(0, 50));
+	const Button backToButton = Button(Scene::Center().movedBy(0, 100));
 };
+
 
 struct GameScene : App::Scene {
 	GameScene(const InitData &init) : IScene(init){}
@@ -251,13 +277,14 @@ private:
 	};
 };
 
+
 struct FinishScene : App::Scene {
 	FinishScene(const InitData &init) : IScene(init){}
 	void update() override{
 		if(KeyEnter.down()){
 			changeScene(U"Title", 0s);
 		}
-		if(SimpleGUI::ButtonAt(U"BackToTitle", Scene::Center().movedBy(0, 100))){
+		if(backToButton.clicked()){
 			changeScene(U"Title", 0s);
 		}
 	}
@@ -271,11 +298,13 @@ struct FinishScene : App::Scene {
 		}
 		font(U"Time: {:.1f}"_fmt(current_time)).drawAt(Scene::Center().movedBy(0, -100));
 		font(U"Score: {}"_fmt(Python::get_current_score())).drawAt(Scene::Center().movedBy(0, -150));
-		SimpleGUI::ButtonAt(U"BackToTitle", Scene::Center().movedBy(0, 100));
+		backToButton.draw(U"BackToTitle");
 	}
 private:
 	const Font font = Font(30, Typeface::Medium);
+	const Button backToButton = Button(Scene::Center().movedBy(0, 100));
 };
+
 
 void Main(){
 	Scene::SetBackground(Palette::Black);
