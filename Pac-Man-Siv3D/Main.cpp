@@ -75,10 +75,16 @@ void draw_coins(){
 }
 
 void draw_header(const double current_time){
-	static const Font font(25, Typeface::Medium);
+	static const Font font(20, U"example/emulogic.ttf");
 	const String mode = Python::get_current_mode() ? U"Chase" : U"Scatter";
+	// time
+	font(U"TIME").drawAt(120, 16);
 	font(U"{:.1f}"_fmt(current_time)).drawAt(120, 40);
+	// mode
+	font(U"MODE").drawAt(290, 16);
 	font(mode).drawAt(290, 40);
+	// score
+	font(U"SCORE").drawAt(450, 16);
 	font(U"{}"_fmt(Python::get_current_score())).drawAt(450, 40);
 }
 
@@ -163,7 +169,7 @@ struct Button {
 	}
 private:
 	const RoundRect buttonRect;
-	const Font font = Font(20, Typeface::Medium);
+	const Font font{ 12, U"example/emulogic.ttf" };
 	static constexpr ColorF mouseOverColor{ 0.9, 0.95, 1.0 };
 	static constexpr ColorF backgroundColor{ 1.0 };
 	static constexpr ColorF frameColor{ 0.67 };
@@ -182,13 +188,13 @@ struct TitleScene : App::Scene {
 		}
 	}
 	void draw() const override{
-		title_font(U"Pac Man").drawAt(Scene::Center().movedBy(0, -200));
+		title_font(U"Pac-Man").drawAt(Scene::Center().movedBy(0, -200));
 		Circle(Scene::Center(), 50).drawPie(130_deg, 280_deg, Palette::Yellow);
 		font(U"Press Enter").drawAt(Scene::Center().movedBy(0, 150));
 	}
 private:
-	const Font font = Font(30, Typeface::Medium);
-	const Font title_font = Font(50, Typeface::Medium);
+	const Font font{ 20, U"example/emulogic.ttf" };
+	const Font title_font{ 40, U"example/emulogic.ttf" };
 };
 
 
@@ -201,10 +207,10 @@ struct PauseScene : App::Scene {
 		}
 		if(continueButton.clicked()){
 			Python::start_game();
-			changeScene(U"Game", 0.2s);
+			changeScene(U"Game", 0.3s);
 		}
 		if(backToButton.clicked()){
-			changeScene(U"Title", 0s);
+			changeScene(U"Title", 0.5s);
 		}
 	}
 	void draw() const override{
@@ -212,13 +218,13 @@ struct PauseScene : App::Scene {
 		Rect(Point(0,0), Scene::Size()).draw(Transparency(0.8));
 		font(U"Pause").drawAt(Scene::Center());
 
-		backToButton.draw(U"BackToTitle");
+		backToButton.draw(U"Back To Title");
 		continueButton.draw(U"Continue(Esc)");
 	}
 private:
-	const Font font = Font(45, Typeface::Bold);
-	const Button continueButton = Button(Scene::Center().movedBy(0, 50));
-	const Button backToButton = Button(Scene::Center().movedBy(0, 100));
+	const Font font{ 35, U"example/emulogic.ttf" };
+	const Button continueButton{ Scene::Center().movedBy(0, 50) };
+	const Button backToButton{ Scene::Center().movedBy(0, 100) };
 };
 
 
@@ -234,14 +240,16 @@ struct GameScene : App::Scene {
 		if(Python::get_is_game_cleared() || (Python::get_remain_num() == 0 && Python::get_is_game_over())){
 			Python::stop_game();
 			sw.pause();
-			changeScene(U"Finish", 0.2s);
+			System::Sleep(1.0s);
+			changeScene(U"Finish", 0s);
 			return;
 		}
 		if(Python::get_is_game_over()){
 			Python::stop_game();
 			Python::restart_game();
 			sw.reset();
-			changeScene(U"Game", 0.5s);
+			System::Sleep(1.0s);
+			changeScene(U"Game", 0s);
 			return;
 		}
 	}
@@ -249,7 +257,7 @@ struct GameScene : App::Scene {
 		// Ready
 		if(!Python::get_is_game_started()){
 			draw_images(0);
-			font(U"READY").drawAt(Scene::Center().movedBy(2, 43));
+			font(U"READY!").drawAt(Scene::Center().movedBy(2, 43), Palette::Yellow);
 			for(const int i : { 1,3 }){
 				if(arrows[i].down()){
 					last_pressed_key = i;
@@ -271,7 +279,7 @@ struct GameScene : App::Scene {
 		Rect{ 545,0, 600,640 }.draw(Palette::Black);
 	}
 private:
-	const Font font = Font(30, Typeface::Medium);
+	const Font font{ 20, U"example/emulogic.ttf" };
 	static constexpr Input arrows[4] = {
 		KeyUp, KeyLeft, KeyDown, KeyRight
 	};
@@ -281,10 +289,7 @@ private:
 struct FinishScene : App::Scene {
 	FinishScene(const InitData &init) : IScene(init){}
 	void update() override{
-		if(KeyEnter.down()){
-			changeScene(U"Title", 0s);
-		}
-		if(backToButton.clicked()){
+		if(KeyEnter.down() || backToButton.clicked()){
 			changeScene(U"Title", 0s);
 		}
 	}
@@ -298,11 +303,11 @@ struct FinishScene : App::Scene {
 		}
 		font(U"Time: {:.1f}"_fmt(current_time)).drawAt(Scene::Center().movedBy(0, -100));
 		font(U"Score: {}"_fmt(Python::get_current_score())).drawAt(Scene::Center().movedBy(0, -150));
-		backToButton.draw(U"BackToTitle");
+		backToButton.draw(U"Back To Title");
 	}
 private:
-	const Font font = Font(30, Typeface::Medium);
-	const Button backToButton = Button(Scene::Center().movedBy(0, 100));
+	const Font font{ 25, U"example/emulogic.ttf" };
+	const Button backToButton{ Scene::Center().movedBy(0, 100) };
 };
 
 
