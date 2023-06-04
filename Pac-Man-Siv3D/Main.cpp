@@ -17,6 +17,7 @@ enum {
 const Array<String> objects = { U"pacman", U"red", U"blue", U"pink", U"orange" };
 const Array<String> direction_name = { U"up", U"left", U"down", U"right" };
 const String img_path = U"example/images/";
+const String font_path = U"example/emulogic.ttf";
 
 int last_pressed_key = 3;
 
@@ -75,17 +76,17 @@ void draw_coins(){
 }
 
 void draw_header(const double current_time){
-	static const Font font(20, U"example/emulogic.ttf");
-	const String mode = Python::get_current_mode() ? U"Chase" : U"Scatter";
+	static const Font font(20, font_path);
 	// time
-	font(U"TIME").drawAt(120, 16);
-	font(U"{:.1f}"_fmt(current_time)).drawAt(120, 40);
+	font(U"TIME").draw(Arg::topCenter = Point(120, 0));
+	font(U"{:.1f}"_fmt(current_time)).draw(Arg::topCenter = Point(120, 24));
 	// mode
-	font(U"MODE").drawAt(290, 16);
-	font(mode).drawAt(290, 40);
+	const String mode = Python::get_current_mode() ? U"Chase" : U"Scatter";
+	font(U"MODE").draw(Arg::topCenter = Point(290, 0));
+	font(mode).draw(Arg::topCenter = Point(290, 24));
 	// score
-	font(U"SCORE").drawAt(450, 16);
-	font(U"{}"_fmt(Python::get_current_score())).drawAt(450, 40);
+	font(U"SCORE").draw(Arg::topCenter = Point(450, 0));
+	font(U"{}"_fmt(Python::get_current_score())).draw(Arg::topCenter = Point(450, 24));
 }
 
 void draw_residue(){
@@ -167,9 +168,10 @@ struct Button {
 		buttonRect.drawFrame(1, 0, frameColor);
 		font(str).drawAt(buttonRect.center(), fontColor);
 	}
+
 private:
 	const RoundRect buttonRect;
-	const Font font{ 12, U"example/emulogic.ttf" };
+	const Font font{ 12, font_path };
 	static constexpr ColorF mouseOverColor{ 0.9, 0.95, 1.0 };
 	static constexpr ColorF backgroundColor{ 1.0 };
 	static constexpr ColorF frameColor{ 0.67 };
@@ -182,24 +184,28 @@ struct TitleScene : App::Scene {
 	TitleScene(const InitData &init) : IScene(init){
 		Python::reset_game();
 	}
+
 	void update() override{
 		if(KeyEnter.down()){
 			changeScene(U"Game", 0s);
 		}
 	}
+
 	void draw() const override{
 		title_font(U"Pac-Man").drawAt(Scene::Center().movedBy(0, -200));
 		Circle(Scene::Center(), 50).drawPie(130_deg, 280_deg, Palette::Yellow);
 		font(U"Press Enter").drawAt(Scene::Center().movedBy(0, 150));
 	}
+
 private:
-	const Font font{ 20, U"example/emulogic.ttf" };
-	const Font title_font{ 40, U"example/emulogic.ttf" };
+	const Font font{ 20, font_path };
+	const Font title_font{ 40, font_path };
 };
 
 
 struct PauseScene : App::Scene {
 	PauseScene(const InitData &init) : IScene(init){}
+
 	void update() override{
 		if((KeyEscape | KeyEnter).down()){
 			Python::start_game();
@@ -207,22 +213,24 @@ struct PauseScene : App::Scene {
 		}
 		if(continueButton.clicked()){
 			Python::start_game();
-			changeScene(U"Game", 0.3s);
+			changeScene(U"Game", 0.5s);
 		}
 		if(backToButton.clicked()){
 			changeScene(U"Title", 0.5s);
 		}
 	}
+
 	void draw() const override{
 		draw_images(0);
 		Rect(Point(0,0), Scene::Size()).draw(Transparency(0.8));
-		font(U"Pause").drawAt(Scene::Center());
+		font(U"Pause").drawAt(Scene::Center().movedBy(0, -50));
 
 		backToButton.draw(U"Back To Title");
 		continueButton.draw(U"Continue(Esc)");
 	}
+
 private:
-	const Font font{ 35, U"example/emulogic.ttf" };
+	const Font font{ 40, font_path };
 	const Button continueButton{ Scene::Center().movedBy(0, 50) };
 	const Button backToButton{ Scene::Center().movedBy(0, 100) };
 };
@@ -230,6 +238,7 @@ private:
 
 struct GameScene : App::Scene {
 	GameScene(const InitData &init) : IScene(init){}
+
 	void update() override{
 		if(Python::get_is_game_started() && KeyEscape.down()){
 			Python::stop_game();
@@ -253,6 +262,7 @@ struct GameScene : App::Scene {
 			return;
 		}
 	}
+
 	void draw() const override{
 		// Ready
 		if(!Python::get_is_game_started()){
@@ -275,11 +285,12 @@ struct GameScene : App::Scene {
 		update_game();
 
 		// background
-		Rect{ 0,0, 62,640 }.draw(Palette::Black);
-		Rect{ 545,0, 600,640 }.draw(Palette::Black);
+		Rect(0,0, 62,640).draw(Palette::Black);
+		Rect(545,0, 600,640).draw(Palette::Black);
 	}
+
 private:
-	const Font font{ 20, U"example/emulogic.ttf" };
+	const Font font{ 20, font_path };
 	static constexpr Input arrows[4] = {
 		KeyUp, KeyLeft, KeyDown, KeyRight
 	};
@@ -288,25 +299,29 @@ private:
 
 struct FinishScene : App::Scene {
 	FinishScene(const InitData &init) : IScene(init){}
+
 	void update() override{
 		if(KeyEnter.down() || backToButton.clicked()){
 			changeScene(U"Title", 0s);
 		}
 	}
+
 	void draw() const override{
+		static const Point Center = Scene::Center();
 		if(Python::get_is_game_cleared()){
 			// game clear
-			font(U"Game Cleared!!").drawAt(Scene::Center());
+			font(U"Game Cleared!!").drawAt(Center);
 		}else{
 			// game over
-			font(U"Game Over").drawAt(Scene::Center());
+			font(U"Game Over").drawAt(Center);
 		}
-		font(U"Time: {:.1f}"_fmt(current_time)).drawAt(Scene::Center().movedBy(0, -100));
-		font(U"Score: {}"_fmt(Python::get_current_score())).drawAt(Scene::Center().movedBy(0, -150));
+		font(U"Time: {:.1f}"_fmt(current_time)).drawAt(Center.movedBy(0, -100));
+		font(U"Score: {}"_fmt(Python::get_current_score())).drawAt(Center.movedBy(0, -150));
 		backToButton.draw(U"Back To Title");
 	}
+
 private:
-	const Font font{ 25, U"example/emulogic.ttf" };
+	const Font font{ 25, font_path };
 	const Button backToButton{ Scene::Center().movedBy(0, 100) };
 };
 
@@ -322,7 +337,7 @@ void Main(){
 	manager.add<GameScene>(U"Game");
 	manager.add<PauseScene>(U"Pause");
 	manager.add<FinishScene>(U"Finish");
-	manager.changeScene(U"Title", 0.2s);
+	manager.changeScene(U"Title", 0s);
 
 	// Init
 	read_all_images();
