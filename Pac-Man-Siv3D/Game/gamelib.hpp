@@ -23,12 +23,11 @@ constexpr int dots_all_num = 244;
 
 constexpr int inf = 100000000;
 
-enum {
-	None, wall, // 黒、壁
-	pac, // Pac-Man
-	red, blue, orange, pink, // enemies
+enum FieldState {
+	None, Wall, // 黒、壁
 	dots, DOTS
 };
+
 // 敵の状態
 enum State {
 	normal, // 通常
@@ -38,9 +37,9 @@ enum State {
 	innest, // in nest 入ってから待機する状態
 	prepare // 出るまでの間
 };
-// rotate
-enum { U,L,D,R };
 
+// rotate
+enum Rot { U,L,D,R,NOP };
 
 
 constexpr int dy[] = { -1,0,1,0 };
@@ -66,45 +65,8 @@ constexpr int time_table[] = {
 };
 
 
-// フィールドの初期状態
-constexpr int first_field_board[height][width] = {
-	{ wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall },
-	{ wall,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,wall,wall,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,wall },
-	{ wall,dots,wall,wall,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,wall,wall,dots,wall },
-	{ wall,DOTS,wall,wall,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,wall,wall,DOTS,wall },
-	{ wall,dots,wall,wall,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,wall,wall,dots,wall },
-	{ wall,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,wall },
-	{ wall,dots,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,dots,wall },
-	{ wall,dots,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,dots,wall },
-	{ wall,dots,dots,dots,dots,dots,dots,wall,wall,dots,dots,dots,dots,wall,wall,dots,dots,dots,dots,wall,wall,dots,dots,dots,dots,dots,dots,wall },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,wall,wall,wall,None,wall,wall,None,wall,wall,wall,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,wall,wall,wall,None,wall,wall,None,wall,wall,wall,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,None,None,None,None,None,None,None,None,None,None,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,None,wall,wall,wall,None,wall,wall,wall,wall,None,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,None,wall,None,wall,None,wall,None,wall,wall,None,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ None,None,None,None,None,None,dots,None,None,None,wall,None,None,None,None,None,wall,wall,None,None,None,dots,None,None,None,None,None,None },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,None,wall,None,wall,None,wall,None,wall,wall,None,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,None,wall,wall,wall,wall,wall,wall,wall,wall,None,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,None,None,None,None,None,None,None,None,None,None,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,None,wall,wall,wall,wall,wall,wall,wall,wall,None,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ wall,wall,wall,wall,wall,wall,dots,wall,wall,None,wall,wall,wall,wall,wall,wall,wall,wall,None,wall,wall,dots,wall,wall,wall,wall,wall,wall },
-	{ wall,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,wall,wall,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,wall },
-	{ wall,dots,wall,wall,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,wall,wall,dots,wall },
-	{ wall,dots,wall,wall,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,dots,wall,wall,wall,wall,dots,wall },
-	{ wall,DOTS,dots,dots,wall,wall,dots,dots,dots,dots,dots,dots,dots,None,None,dots,dots,dots,dots,dots,dots,dots,wall,wall,dots,dots,DOTS,wall },
-	{ wall,wall,wall,dots,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,dots,wall,wall,wall },
-	{ wall,wall,wall,dots,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,dots,wall,wall,wall },
-	{ wall,dots,dots,dots,dots,dots,dots,wall,wall,dots,dots,dots,dots,wall,wall,dots,dots,dots,dots,wall,wall,dots,dots,dots,dots,dots,dots,wall },
-	{ wall,dots,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,dots,wall },
-	{ wall,dots,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,dots,wall,wall,dots,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,dots,wall },
-	{ wall,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,dots,wall },
-	{ wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall,wall },
-};
-
-
-
 // enemyが入れないところ{y, x, r}
-const std::set<std::tuple<int,int,int>> isgate{
+const std::set<std::tuple<int,int,Rot>> isgate{
 	{ 12,13,D }, { 12,14,D }, //敵の出入り口
 	{ 10,12,U }, { 10,15,U }, //上
 	{ 22,12,U }, { 22,15,U }, //下
@@ -116,14 +78,4 @@ inline constexpr bool isvalid(const int y, const int x) noexcept{
 
 constexpr int round(const int a){
 	return (a + size/2) / size;
-}
-
-inline unsigned int randxor32() noexcept{
-	static unsigned int y = (unsigned int)rand() | (unsigned int)rand() << 16;
-	y = y ^ (y << 13); y = y ^ (y >> 17);
-	return y = y ^ (y << 5);
-}
-// returns random [l, r)
-inline int rnd(const int l, const int r) noexcept{
-	return randxor32() % (r - l) + l;
 }

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <Siv3D.hpp>
+#include "../Game/InitField.hpp"
 
 
 using App = SceneManager<String>;
@@ -9,7 +10,7 @@ constexpr int SIZE = 17;
 constexpr int adj_x = 58, adj_y = 60;
 
 // images modes
-enum {
+enum Mode {
 	NORMAL, EATEN, FRIGHTENED, SCORE, FLASH
 };
 
@@ -28,19 +29,19 @@ void read_all_images(){
 		for(const auto j : step(direction_name.size())){
 			for(const auto k : step(2)){
 				String img_name = img_path + U"{}/{}{}.png"_fmt(objects[i], direction_name[j], k);
-				TextureAsset::Register(U"{}{}{}{}"_fmt(NORMAL,i,j,k), img_name);
+				TextureAsset::Register(U"{}{}{}{}"_fmt(Mode::NORMAL,i,j,k), img_name);
 
 				img_name = img_path + U"eaten/{}.png"_fmt(direction_name[j]);
-				TextureAsset::Register(U"{}{}{}{}"_fmt(EATEN,i,j,k), img_name);
+				TextureAsset::Register(U"{}{}{}{}"_fmt(Mode::EATEN,i,j,k), img_name);
 
 				img_name = img_path + U"frightened/0{}.png"_fmt(k);
-				TextureAsset::Register(U"{}{}{}{}"_fmt(FRIGHTENED,i,j,k), img_name);
+				TextureAsset::Register(U"{}{}{}{}"_fmt(Mode::FRIGHTENED,i,j,k), img_name);
 
 				img_name = img_path + U"eaten/{}00.png"_fmt(1 << (j + 1));
-				TextureAsset::Register(U"{}{}{}{}"_fmt(SCORE,i,j,k), img_name);
+				TextureAsset::Register(U"{}{}{}{}"_fmt(Mode::SCORE,i,j,k), img_name);
 
 				img_name = img_path + U"frightened/1{}.png"_fmt(k);
-				TextureAsset::Register(U"{}{}{}{}"_fmt(FLASH,i,j,k), img_name);
+				TextureAsset::Register(U"{}{}{}{}"_fmt(Mode::FLASH,i,j,k), img_name);
 			}
 		}
 	}
@@ -64,11 +65,11 @@ void draw_coins(){
 			const int type = Python::get_field_value(i, j);
 			const Point pos(j*SIZE + adj_x, i*SIZE + adj_y);
 			// small
-			if(type == 7){
+			if(type == FieldState::dots){
 				get_texture_asset(U"small_coin").draw(pos);
 			}
 			// large
-			if(type == 8){
+			if(type == FieldState::DOTS){
 				get_texture_asset(U"large_coin").draw(pos);
 			}
 		}
@@ -127,7 +128,7 @@ void draw_images(const int flip){
 				// eaten
 				if((x+size/2)/size == (last_pac_posx+size/2)/size && (y+size/2)/size == (last_pac_posy+size/2)/size){
 					assert(Python::get_eat_num());
-					get_texture_asset(SCORE,i,Python::get_eat_num()-1,flip).draw(pos);
+					get_texture_asset(Mode::SCORE,i,Python::get_eat_num()-1,flip).draw(pos);
 					continue;
 				}
 			}
@@ -137,7 +138,7 @@ void draw_images(const int flip){
 		const int t = Python::get_limit_time(i) * 4;
 		if(t <= 8 && !(t & 1)){
 			// frightened mode
-			get_texture_asset(FLASH,i,r,flip).draw(pos);
+			get_texture_asset(Mode::FLASH,i,r,flip).draw(pos);
 		}else{
 			get_texture_asset(s,i,r,flip).draw(pos);
 		}
