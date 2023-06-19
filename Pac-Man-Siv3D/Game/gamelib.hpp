@@ -39,7 +39,26 @@ enum State {
 };
 
 // rotate
-enum Rot { U,L,D,R,NOP };
+//enum Rot { U,L,D,R,NOP };
+struct Rot {
+	constexpr Rot(const uint8 r) : val(r){
+		assert(0 <= r && r <= 4);
+	}
+
+	constexpr bool isvalid() const{ return this->val != Rot::NOP; }
+
+	constexpr operator uint8() const{ return this->val; }
+
+	static const Rot U, L, D, R, NOP;
+
+private:
+	uint8 val;
+};
+constexpr Rot Rot::U = 0;
+constexpr Rot Rot::L = 1;
+constexpr Rot Rot::D = 2;
+constexpr Rot Rot::R = 3;
+constexpr Rot Rot::NOP = 4;
 
 
 constexpr int dy[] = { -1,0,1,0 };
@@ -67,9 +86,9 @@ constexpr int time_table[] = {
 
 // enemyが入れないところ{y, x, r}
 const std::set<std::tuple<int,int,Rot>> isgate{
-	{ 12,13,D }, { 12,14,D }, //敵の出入り口
-	{ 10,12,U }, { 10,15,U }, //上
-	{ 22,12,U }, { 22,15,U }, //下
+	{ 12,13,Rot::D }, { 12,14,Rot::D }, //敵の出入り口
+	{ 10,12,Rot::U }, { 10,15,Rot::U }, //上
+	{ 22,12,Rot::U }, { 22,15,Rot::U }, //下
 };
 
 inline constexpr bool isvalid(const int y, const int x) noexcept{

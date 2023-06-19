@@ -55,11 +55,11 @@ struct Position {
 
 	// 方向をrにセット
 	void rotate(const Rot r){
-		assert(r != Rot::NOP);
+		assert(r.isvalid());
 		rot = r;
 	}
 
-	void reverse(){ rot = Rot((rot+2) % 4); }
+	void reverse(){ rot = (rot+2) % 4; }
 
 	// 最大速度のt%の速度に設定
 	void set_speed(const int t){ spd = t * frame_move; }
@@ -138,7 +138,7 @@ struct PacMan : Position {
 	static constexpr int pac_pos_y = 23*size, pac_pos_x = 13*size+size/2;
 	static constexpr int corner_cut = frame_move * 200;
 
-	PacMan() : Position(pac_pos_y, pac_pos_x, L){}
+	PacMan() : Position(pac_pos_y, pac_pos_x, Rot::L){}
 
 	// 方向転換、次に移動すべき回転場所を返す
 	void change_direction(Rot dir){
@@ -149,7 +149,7 @@ struct PacMan : Position {
 		const int ry = round_y(), rx = round_x();
 		// pac-manからの方向の入力を確かめる
 		// 入力なしの場合
-		if(dir == Rot::NOP) dir = rot;
+		if(!dir.isvalid()) dir = rot;
 
 		const int ny = ry + dy[dir];
 		const int nx = rx + dx[dir];
@@ -216,16 +216,16 @@ struct Enemy : Position {
 		}
 		// eaten_mode 巣の前まで来たとき
 		else if(get_state() == eaten && ry == nest_posy && rx == nest_posx){
-			rotate(D);
+			rotate(Rot::D);
 			set_state(tonest);
 			// 真ん中に半分だけずらす
 			adj_posx = size / 2;
 			x -= adj_posx;
-			rotate(R);
+			rotate(Rot::R);
 			return;
 		}
 		else if(get_state() == tonest && ry == innest_posy && rx == innest_posx){
-			rotate(U);
+			rotate(Rot::U);
 			set_state(innest);
 			cur_wait_time = nest_wait_time;
 			return;
@@ -233,14 +233,14 @@ struct Enemy : Position {
 		else if(get_state() == innest){
 			if(cur_wait_time <= 0 && ry == 14){
 				set_state(prepare);
-				if(rx == nest_posx) dir = U;
-				else if(rx < nest_posx) dir = R;
-				else dir = L;
+				if(rx == nest_posx) dir = Rot::U;
+				else if(rx < nest_posx) dir = Rot::R;
+				else dir = Rot::L;
 			}else{
 				// up
-				if(ry == 13) dir = D;
+				if(ry == 13) dir = Rot::D;
 				// down
-				else if(ry == 15) dir = U;
+				else if(ry == 15) dir = Rot::U;
 				else dir = get_r();
 			}
 		}
@@ -251,7 +251,7 @@ struct Enemy : Position {
 			adj_posx = 0;
 		}
 
-		if(dir == Rot::NOP){
+		if(!dir.isvalid()){
 			int dist = inf;
 			for(const auto i : step(4)){
 				const int ny = ry + dy[i];
@@ -268,7 +268,7 @@ struct Enemy : Position {
 			}
 		}
 
-		assert(dir != Rot::NOP);
+		assert(dir.isvalid());
 
 		// 進行方向がFieldState::Wall
 		if(get_field_val(ry+dy[dir], rx+dx[dir]) == FieldState::Wall){
@@ -301,7 +301,7 @@ struct RedEnemy : Enemy {
 	static constexpr int red_posy = 11, red_posx = 13;
 	static constexpr int innest_posy = 14, innest_posx = 13;
 
-	RedEnemy(const PacMan &pm) : Enemy(red_posy*size, red_posx*size+size/2, L, pm, innest_posy, innest_posx){}
+	RedEnemy(const PacMan &pm) : Enemy(red_posy*size, red_posx*size+size/2, Rot::L, pm, innest_posy, innest_posx){}
 
 	void move() override {
 		Position target(-4*size, (width-3)*size); // scatter
@@ -325,7 +325,7 @@ struct PinkEnemy : Enemy {
 	static constexpr int innest_posy = 14, innest_posx = 13;
 	static constexpr double first_nest_wait_time = 1.0;
 
-	PinkEnemy(const PacMan &pm) : Enemy(pink_posy*size, pink_posx*size, D, pm, innest_posy, innest_posx){
+	PinkEnemy(const PacMan &pm) : Enemy(pink_posy*size, pink_posx*size, Rot::D, pm, innest_posy, innest_posx){
 		cur_wait_time = first_nest_wait_time;
 		adj_posx = size / 2;
 		set_state(innest);
@@ -357,7 +357,7 @@ struct BlueEnemy : Enemy {
 	static constexpr double first_nest_wait_time = 2.0;
 	const Enemy *red_enemy;
 
-	BlueEnemy(const PacMan &pm, const Enemy *red) : Enemy(blue_posy*size, blue_posx*size, U, pm, innest_posy, innest_posx), red_enemy(red){
+	BlueEnemy(const PacMan &pm, const Enemy *red) : Enemy(blue_posy*size, blue_posx*size, Rot::U, pm, innest_posy, innest_posx), red_enemy(red){
 		cur_wait_time = first_nest_wait_time;
 		adj_posx = size / 2;
 		set_state(innest);
@@ -391,7 +391,7 @@ struct OrangeEnemy : Enemy {
 	static constexpr int innest_posy = 14, innest_posx = 15;
 	static constexpr double first_nest_wait_time = 4.0;
 
-	OrangeEnemy(const PacMan &pm) : Enemy(oran_posy*size, oran_posx*size, U, pm, innest_posy, innest_posx){
+	OrangeEnemy(const PacMan &pm) : Enemy(oran_posy*size, oran_posx*size, Rot::U, pm, innest_posy, innest_posx){
 		cur_wait_time = first_nest_wait_time;
 		adj_posx = size / 2;
 		set_state(innest);
