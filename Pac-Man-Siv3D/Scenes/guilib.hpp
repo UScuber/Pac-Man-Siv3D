@@ -19,14 +19,14 @@ const Array<String> direction_name = { U"up", U"left", U"down", U"right" };
 const String img_path = U"example/images/";
 const String font_path = U"example/emulogic.ttf";
 
-int last_pressed_key = 3;
+Rot last_pressed_key = Rot::R;
 
 Stopwatch sw;
 
 
 void read_all_images(){
-	for(const auto i : step(objects.size())){
-		for(const auto j : step(direction_name.size())){
+	for(const auto i : step((int)objects.size())){
+		for(const auto j : step((int)direction_name.size())){
 			for(const auto k : step(2)){
 				String img_name = img_path + U"{}/{}{}.png"_fmt(objects[i], direction_name[j], k);
 				TextureAsset::Register(U"{}{}{}{}"_fmt(Mode::NORMAL,i,j,k), img_name);
@@ -76,11 +76,11 @@ void draw_coins(){
 	}
 }
 
-void draw_header(const double current_time){
+void draw_header(const double cur_time){
 	static const Font font(20, font_path);
 	// time
 	font(U"TIME").draw(Arg::topCenter = Point(120, 0));
-	font(U"{:.1f}"_fmt(current_time)).draw(Arg::topCenter = Point(120, 24));
+	font(U"{:.1f}"_fmt(cur_time)).draw(Arg::topCenter = Point(120, 24));
 	// mode
 	const String mode = Python::get_current_mode() ? U"Chase" : U"Scatter";
 	font(U"MODE").draw(Arg::topCenter = Point(290, 0));
@@ -109,11 +109,11 @@ void draw_images(const int flip){
 	// residue
 	draw_residue();
 
-	for(const auto i : step(objects.size())){
-		const int s = Python::get_state(i);
+	for(const auto i : step((int)objects.size())){
+		const int s = (int)Python::get_state(i);
 		const int x = Python::get_posx(i);
 		const int y = Python::get_posy(i);
-		const int r = Python::get_rot(i);
+		const Rot r = Python::get_rot(i);
 		const Point pos(x*SIZE/size + adj_x, y*SIZE/size + adj_y);
 		if(i == 0){
 			if(last_pac_posx == x && last_pac_posy == y){
@@ -135,7 +135,7 @@ void draw_images(const int flip){
 			get_texture_asset(s,i,r,0).draw(pos);
 			continue;
 		}
-		const int t = Python::get_limit_time(i) * 4;
+		const int t = (int)(Python::get_limit_time(i) * 4);
 		if(t <= 8 && !(t & 1)){
 			// frightened mode
 			get_texture_asset(Mode::FLASH,i,r,flip).draw(pos);
@@ -149,8 +149,8 @@ void update_game(){
 	static int cnt = 0, flip = 0;
 	if(cnt % flip_freq == 0) flip ^= 1;
 	cnt++;
-	const double current_time = sw.sF();
-	Python::update_frame(current_time, last_pressed_key);
+	const double cur_time = sw.sF();
+	Python::update_frame(cur_time, last_pressed_key);
 
 	draw_images(flip);
 }

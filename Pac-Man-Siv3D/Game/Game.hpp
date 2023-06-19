@@ -51,7 +51,7 @@ struct Position {
 
 	bool is_stop() const{ return Stop; }
 
-	int get_state() const{ return state; }
+	State get_state() const{ return state; }
 
 	// 方向をrにセット
 	void rotate(const Rot r){
@@ -129,7 +129,7 @@ struct Position {
 protected:
 	int y,x; Rot rot;
 	int spd = normal_spd;
-	State state = normal;
+	State state = State::Normal;
 	bool Stop = true;
 };
 
@@ -184,13 +184,13 @@ struct Enemy : Position {
 
 	// パックマンと触れたか
 	bool is_touch() const{
-		return !(dist(pacman) || get_state() == eaten);
+		return !(dist(pacman) || get_state() == State::Eaten);
 	}
 
 	// 入れないかどうか
-	bool check_is_gate(const int y, const int x, const Rot r) const{
-		if(get_state() == tonest) return false;
-		if(isgate.count({ y, x, r })) return true;
+	bool check_is_gate(const int py, const int px, const Rot r) const{
+		if(get_state() == State::Tonest) return false;
+		if(isgate.count({ py, px, r })) return true;
 		return false;
 	}
 
@@ -202,9 +202,9 @@ struct Enemy : Position {
 
 		const int ry = round_y(), rx = round_x();
 
-		if(get_state() == frightened){
+		if(get_state() == State::Frightened){
 			while(true){
-				dir = (Rot)Random(0, 3);
+				dir = Random(0, 3);
 				const int ny = ry + dy[dir];
 				const int nx = rx + dx[dir];
 
@@ -215,24 +215,24 @@ struct Enemy : Position {
 			}
 		}
 		// eaten_mode 巣の前まで来たとき
-		else if(get_state() == eaten && ry == nest_posy && rx == nest_posx){
+		else if(get_state() == State::Eaten && ry == nest_posy && rx == nest_posx){
 			rotate(Rot::D);
-			set_state(tonest);
+			set_state(State::Tonest);
 			// 真ん中に半分だけずらす
 			adj_posx = size / 2;
 			x -= adj_posx;
 			rotate(Rot::R);
 			return;
 		}
-		else if(get_state() == tonest && ry == innest_posy && rx == innest_posx){
+		else if(get_state() == State::Tonest && ry == innest_posy && rx == innest_posx){
 			rotate(Rot::U);
-			set_state(innest);
+			set_state(State::Innest);
 			cur_wait_time = nest_wait_time;
 			return;
 		}
-		else if(get_state() == innest){
+		else if(get_state() == State::Innest){
 			if(cur_wait_time <= 0 && ry == 14){
-				set_state(prepare);
+				set_state(State::Prepare);
 				if(rx == nest_posx) dir = Rot::U;
 				else if(rx < nest_posx) dir = Rot::R;
 				else dir = Rot::L;
@@ -244,8 +244,8 @@ struct Enemy : Position {
 				else dir = get_r();
 			}
 		}
-		else if(get_state() == prepare && ry == nest_posy && rx == nest_posx){
-			set_state(normal);
+		else if(get_state() == State::Prepare && ry == nest_posy && rx == nest_posx){
+			set_state(State::Normal);
 			// 真ん中から半分だけずらす
 			x += adj_posx;
 			adj_posx = 0;
@@ -305,13 +305,13 @@ struct RedEnemy : Enemy {
 
 	void move() override {
 		Position target(-4*size, (width-3)*size); // scatter
-		if(get_state() == eaten) // eaten
+		if(get_state() == State::Eaten) // eaten
 			target = Position(nest_posy*size, nest_posx*size);
-		else if(get_state() == tonest)
+		else if(get_state() == State::Tonest)
 			target = Position(innest_posy*size, innest_posx*size);
-		else if(get_state() == innest)
+		else if(get_state() == State::Innest)
 			target = Position(innest_posy*size, innest_posx*size);
-		else if(get_state() == prepare)
+		else if(get_state() == State::Prepare)
 			target = Position(nest_posy*size, nest_posx*size);
 		else if(chase_mode) // chase
 			target = pacman;
@@ -328,18 +328,18 @@ struct PinkEnemy : Enemy {
 	PinkEnemy(const PacMan &pm) : Enemy(pink_posy*size, pink_posx*size, Rot::D, pm, innest_posy, innest_posx){
 		cur_wait_time = first_nest_wait_time;
 		adj_posx = size / 2;
-		set_state(innest);
+		set_state(State::Innest);
 	}
 
 	void move() override {
 		Position target(-4*size, 2*size); // scatter
-		if(get_state() == eaten) // eaten
+		if(get_state() == State::Eaten) // eaten
 			target = Position(nest_posy*size, nest_posx*size);
-		else if(get_state() == tonest)
+		else if(get_state() == State::Tonest)
 			target = Position(innest_posy*size, innest_posx*size);
-		else if(get_state() == innest)
+		else if(get_state() == State::Innest)
 			target = Position(innest_posy*size, innest_posx*size);
-		else if(get_state() == prepare)
+		else if(get_state() == State::Prepare)
 			target = Position(nest_posy*size, nest_posx*size);
 		else if(chase_mode){ // chase
 			const int r = pacman.get_r();
@@ -355,23 +355,23 @@ struct BlueEnemy : Enemy {
 	static constexpr int blue_posy = 14, blue_posx = 12-1;
 	static constexpr int innest_posy = 14, innest_posx = 12-1;
 	static constexpr double first_nest_wait_time = 2.0;
-	const Enemy *red_enemy;
+	const std::shared_ptr<Enemy> red_enemy;
 
-	BlueEnemy(const PacMan &pm, const Enemy *red) : Enemy(blue_posy*size, blue_posx*size, Rot::U, pm, innest_posy, innest_posx), red_enemy(red){
+	BlueEnemy(const PacMan &pm, const std::shared_ptr<Enemy> &red) : Enemy(blue_posy*size, blue_posx*size, Rot::U, pm, innest_posy, innest_posx), red_enemy(red){
 		cur_wait_time = first_nest_wait_time;
 		adj_posx = size / 2;
-		set_state(innest);
+		set_state(State::Innest);
 	}
 
 	void move() override {
 		Position target((height+1)*size, width*size); // scatter
-		if(get_state() == eaten) // eaten
+		if(get_state() == State::Eaten) // eaten
 			target = Position(nest_posy*size, nest_posx*size);
-		else if(get_state() == tonest)
+		else if(get_state() == State::Tonest)
 			target = Position(innest_posy*size, innest_posx*size);
-		else if(get_state() == innest)
+		else if(get_state() == State::Innest)
 			target = Position(innest_posy*size, innest_posx*size);
-		else if(get_state() == prepare)
+		else if(get_state() == State::Prepare)
 			target = Position(nest_posy*size, nest_posx*size);
 		else if(chase_mode){ // chase
 			const int r = pacman.get_r();
@@ -394,7 +394,7 @@ struct OrangeEnemy : Enemy {
 	OrangeEnemy(const PacMan &pm) : Enemy(oran_posy*size, oran_posx*size, Rot::U, pm, innest_posy, innest_posx){
 		cur_wait_time = first_nest_wait_time;
 		adj_posx = size / 2;
-		set_state(innest);
+		set_state(State::Innest);
 	}
 
 	void move() override {
@@ -402,13 +402,13 @@ struct OrangeEnemy : Enemy {
 		Position target((height+1)*size, 0); // scatter
 		const int d = dist(pacman);
 
-		if(get_state() == eaten) // eaten
+		if(get_state() == State::Eaten) // eaten
 			target = Position(nest_posy*size, nest_posx*size);
-		else if(get_state() == tonest)
+		else if(get_state() == State::Tonest)
 			target = Position(innest_posy*size, innest_posx*size);
-		else if(get_state() == innest)
+		else if(get_state() == State::Innest)
 			target = Position(innest_posy*size, innest_posx*size);
-		else if(get_state() == prepare)
+		else if(get_state() == State::Prepare)
 			target = Position(nest_posy*size, (nest_posx+1)*size);
 		else if(d >= max_dist && chase_mode) // chase
 			target = pacman;
@@ -419,16 +419,16 @@ struct OrangeEnemy : Enemy {
 
 struct Game {
 	Game() : pacman(), score(0){
-		enemies[0] = new RedEnemy(pacman);
-		enemies[1] = new BlueEnemy(pacman, enemies[0]);
-		enemies[2] = new PinkEnemy(pacman);
-		enemies[3] = new OrangeEnemy(pacman);
+		enemies[0].reset(new RedEnemy(pacman));
+		enemies[1].reset(new BlueEnemy(pacman, enemies[0]));
+		enemies[2].reset(new PinkEnemy(pacman));
+		enemies[3].reset(new OrangeEnemy(pacman));
 		memcpy(field, first_field_board, sizeof(field));
 	}
 
 	~Game(){
-		for(int i = 0; i < 4; i++){
-			delete enemies[i];
+		for(const auto i : step(enemies_num)){
+			enemies[i].reset();
 		}
 	}
 
@@ -454,10 +454,10 @@ struct Game {
 		printf("restart\n");
 		this->~Game();
 		pacman = PacMan();
-		enemies[0] = new RedEnemy(pacman);
-		enemies[1] = new BlueEnemy(pacman, enemies[0]);
-		enemies[2] = new PinkEnemy(pacman);
-		enemies[3] = new OrangeEnemy(pacman);
+		enemies[0].reset(new RedEnemy(pacman));
+		enemies[1].reset(new BlueEnemy(pacman, enemies[0]));
+		enemies[2].reset(new PinkEnemy(pacman));
+		enemies[3].reset(new OrangeEnemy(pacman));
 
 		chase_mode = false;
 		cur_table_pos = 0;
@@ -490,7 +490,7 @@ private:
 		wait_cnt = eat_cnt;
 		pacman.stop();
 		for(auto &enem : enemies){
-			if(enem->get_state() != eaten){
+			if(enem->get_state() != State::Eaten){
 				enem->stop();
 				printf("stopped ");
 			}
@@ -516,13 +516,13 @@ private:
 		}
 
 		for(int i = 0; i < 4; i++){
-			if(enemies[i]->get_state() == eaten) enemies[i]->set_speed(200);
+			if(enemies[i]->get_state() == State::Eaten) enemies[i]->set_speed(200);
 			else if(enemies[i]->is_intunnel()) enemies[i]->set_speed(40);
-			else if(enemies[i]->get_state() == frightened) enemies[i]->set_speed(50);
-			else if(enemies[i]->get_state() == normal && !c[i]) enemies[i]->set_speed(75);
-			else if(enemies[i]->get_state() == tonest) enemies[i]->set_speed(200);
-			else if(enemies[i]->get_state() == innest) enemies[i]->set_speed(55);
-			else if(enemies[i]->get_state() == prepare) enemies[i]->set_speed(40);
+			else if(enemies[i]->get_state() == State::Frightened) enemies[i]->set_speed(50);
+			else if(enemies[i]->get_state() == State::Normal && !c[i]) enemies[i]->set_speed(75);
+			else if(enemies[i]->get_state() == State::Tonest) enemies[i]->set_speed(200);
+			else if(enemies[i]->get_state() == State::Innest) enemies[i]->set_speed(55);
+			else if(enemies[i]->get_state() == State::Prepare) enemies[i]->set_speed(40);
 		}
 
 		// pacman
@@ -539,14 +539,14 @@ private:
 	bool check_is_touch(){
 		for(auto &enem : enemies){
 			if(enem->is_touch()){
-				if(enem->get_state() == normal){
+				if(enem->get_state() == State::Normal){
 					gameover = true;
 					printf("gameover!\n");
 				}
-				else if(enem->get_state() == frightened){
+				else if(enem->get_state() == State::Frightened){
 					// stop, eaten_modeにする
 					enem->stop();
-					enem->set_state(eaten);
+					enem->set_state(State::Eaten);
 					change_to_eaten();
 				}
 				return true;
@@ -557,7 +557,7 @@ private:
 
 	void set_state_enemies(const State st) const{
 		for(auto &enem : enemies){
-			if(enem->get_state() != eaten && enem->get_state() < tonest){
+			if(enem->get_state() != State::Eaten && enem->get_state() < State::Tonest){
 				enem->set_state(st);
 			}
 		}
@@ -565,7 +565,7 @@ private:
 
 	void reverse_enemies() const{
 		for(auto &enem : enemies){
-			if(enem->get_state() != eaten && enem->get_state() < tonest){
+			if(enem->get_state() != State::Eaten && enem->get_state() < State::Tonest){
 				enem->reverse();
 			}
 		}
@@ -580,8 +580,8 @@ private:
 		cur_table_pos++;
 	}
 
-	void start_frightened_mode(const double time){
-		set_state_enemies(frightened);
+	void start_frightened_mode(){
+		set_state_enemies(State::Frightened);
 		// adjust_timeを増やして時間を止めるため、adjust_timeを保存
 		frightened_start_time = adjust_time;
 		eat_num = 0;
@@ -591,7 +591,7 @@ private:
 
 	void end_frightened_mode(){
 		frightened_start_time = -1;
-		set_state_enemies(normal);
+		set_state_enemies(State::Normal);
 		eat_num = 0;
 		printf("return to normal mode\n");
 	}
@@ -643,7 +643,7 @@ public:
 			dots_remain_num--;
 			is_ate_dots = true;
 			if(v == DOTS){
-				start_frightened_mode(time);
+				start_frightened_mode();
 				score += DOT_score;
 			}else{
 				score += dot_score;
@@ -691,7 +691,8 @@ private:
 	static constexpr int dot_score = 10;
 	static constexpr int DOT_score = 50;
 	static constexpr int eat_enemy_score = 100; // 200の半分
-	Enemy *enemies[enemies_num];
+	//Enemy *enemies[enemies_num];
+	std::array<std::shared_ptr<Enemy>, enemies_num> enemies;
 	PacMan pacman;
 	bool started = false;
 	// 最後にパックマンがいたマスの場所
@@ -704,9 +705,9 @@ Game game;
 
 namespace Python {
 
-int update_frame(const double time, const int r){
+int update_frame(const double time, const Rot r){
 	assert(0 <= r && r <= 4);
-	return game.update(time, (Rot)r);
+	return game.update(time, r);
 }
 
 void start_game(){
@@ -745,17 +746,17 @@ int get_posx(const int i){
 	return game.get_enemy(i-1).get_x() + game.get_enemy(i-1).adj_posx;
 }
 
-int get_rot(const int i){
+Rot get_rot(const int i){
 	if(!i) return game.get_pacman().get_r();
 	return game.get_enemy(i-1).get_r();
 }
 
-int get_state(const int i){
+State get_state(const int i){
 	if(!i) return game.get_pacman().get_state();
-	const int st = game.get_enemy(i-1).get_state();
-	if(st < tonest) return st;
-	if(st == tonest) return eaten;
-	return normal;
+	const State st = game.get_enemy(i-1).get_state();
+	if(st < State::Tonest) return st;
+	if(st == State::Tonest) return State::Eaten;
+	return State::Normal;
 }
 
 bool get_is_stop(const int i){
@@ -765,7 +766,7 @@ bool get_is_stop(const int i){
 
 // frightened_modeの制限時間
 double get_limit_time(const int i){
-	if(!i || game.get_enemy(i-1).get_state() != frightened) return inf;
+	if(!i || game.get_enemy(i-1).get_state() != State::Frightened) return inf;
 	return frightened_time - (adjust_time - frightened_start_time);
 }
 

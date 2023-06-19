@@ -30,18 +30,20 @@ enum FieldState {
 
 // 敵の状態
 enum State {
-	normal, // 通常
-	eaten, // 食べられた
-	frightened, // 青色状態
-	tonest, // to nest 巣の中に入るまで(nest -> innestまで)
-	innest, // in nest 入ってから待機する状態
-	prepare // 出るまでの間
+	Normal, // 通常
+	Eaten, // 食べられた
+	Frightened, // 青色状態
+	Tonest, // to nest 巣の中に入るまで(nest -> innestまで)
+	Innest, // in nest 入ってから待機する状態
+	Prepare // 出るまでの間
 };
 
 // rotate
-//enum Rot { U,L,D,R,NOP };
 struct Rot {
 	constexpr Rot(const uint8 r) : val(r){
+		assert(0 <= r && r <= 4);
+	}
+	constexpr Rot(const int r) : val((uint8)r){
 		assert(0 <= r && r <= 4);
 	}
 

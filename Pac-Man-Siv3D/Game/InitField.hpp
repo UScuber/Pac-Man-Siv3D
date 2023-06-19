@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "gamelib.hpp"
 
 // フィールドの初期状態
