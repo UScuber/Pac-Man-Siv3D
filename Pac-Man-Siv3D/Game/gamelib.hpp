@@ -100,3 +100,33 @@ inline constexpr bool isvalid(const int y, const int x) noexcept{
 constexpr int round(const int a){
 	return (a + size/2) / size;
 }
+
+bool chase_mode = false; // 最初はscatter mode
+bool gameover = false;
+bool game_cleared = false;
+
+int wait_cnt = 0;
+int eat_num = 0; // 食べた数
+int remain_num = 2; // 残基(現在を除く)
+double adjust_time = 0; // frightenedの時の時間を引く
+double frightened_start_time = -1;
+double current_time = 0;
+
+int dots_remain_num = dots_all_num;
+
+
+int cur_table_pos = 0;
+
+FieldState field[height][width];
+
+
+// fieldの値を取得
+FieldState get_field_val(const int y, const int x){
+	if(y == 14 && (x < 0 || x >= width)) return FieldState::None; // 14はワープのところ
+	if(!isvalid(y, x)) return FieldState::Wall;
+	return field[y][x];
+}
+
+void set_field_val(const int y, const int x, const FieldState t){
+	if(isvalid(y, x)) field[y][x] = t;
+}
